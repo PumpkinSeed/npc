@@ -10,9 +10,9 @@ services:
       - "4171:4171"
     command: >
       /nsqadmin
-      -lookupd-http-address nsqlookup-1:4161
-      -lookupd-http-address nsqlookup-2:4161
-      -lookupd-http-address nsqlookup-3:4161
+      -lookupd-http-address nsqlookupd-1:4161
+      -lookupd-http-address nsqlookupd-2:4161
+      -lookupd-http-address nsqlookupd-3:4161
     depends_on:
       - nsqlookupd-1
       - nsqlookupd-2
@@ -49,7 +49,7 @@ services:
     image: nsqio/nsq:v0.3.8
     command: >
       /nsqd
-      -broadcast-address localhost:4150
+      --mem-queue-size 0
       -lookupd-tcp-address nsqlookupd-1:4160
       -lookupd-tcp-address nsqlookupd-2:4160
       -lookupd-tcp-address nsqlookupd-3:4160
@@ -65,7 +65,7 @@ services:
     image: nsqio/nsq:v0.3.8
     command: >
       /nsqd
-      -broadcast-address localhost:4152
+      --mem-queue-size 0
       -lookupd-tcp-address nsqlookupd-1:4160
       -lookupd-tcp-address nsqlookupd-2:4160
       -lookupd-tcp-address nsqlookupd-3:4160
@@ -81,7 +81,7 @@ services:
     image: nsqio/nsq:v0.3.8
     command: >
       /nsqd
-      -broadcast-address localhost:4154
+      --mem-queue-size 0
       -lookupd-tcp-address nsqlookupd-1:4160
       -lookupd-tcp-address nsqlookupd-2:4160
       -lookupd-tcp-address nsqlookupd-3:4160
