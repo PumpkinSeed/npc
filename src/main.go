@@ -9,6 +9,12 @@ import (
 	"github.com/PumpkinSeed/durable-nsq-example/src/producer"
 )
 
+const (
+	topic = "clicks"
+	ch    = "metrics"
+	log   = true
+)
+
 var consume bool
 var amount int
 
@@ -37,7 +43,7 @@ func main() {
 				producer.Write(randStringRunes(10))
 			}
 		}()
-		consumer.Start()
+		consumer.Start(consumer.NewConfig(topic, ch, log, &consumer.DefaultMessageHandler{}))
 	} else {
 		for i := 0; i < amount; i++ {
 			producer.Write(randStringRunes(10))

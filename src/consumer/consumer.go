@@ -11,29 +11,50 @@ import (
 	nsq "github.com/nsqio/go-nsq"
 )
 
-// NoopNSQLogger allows us to pipe NSQ logs to dev/null
+type Config struct {
+	Log     bool
+	Channel string
+	Topic   string
+	Handler nsq.Handler
+}
+
+func NewConfig(topic, ch string, log bool, handler nsq.Handler) *Config {
+	return &Config{
+		Topic:   topic,
+		Channel: ch,
+		Log:     log,
+		Handler: handler,
+	}
+}
+
+type innerLogger struct{}
+
+func (l *innerLogger) Output(calldepth int, s string) error {
+	return log.Output(calldepth, s)
+}
+
+// noopLogger allows us to pipe NSQ logs to dev/null
 // The default NSQ logger is great for debugging, but did
 // not fit our normally well structured JSON logs. Luckily
 // NSQ provides a simple interface for injecting your own
 // logger.
-type NoopNSQLogger struct{}
+type noopLogger struct{}
 
 // Output allows us to implement the nsq.Logger interface
-func (l *NoopNSQLogger) Output(calldepth int, s string) error {
-	fmt.Printf("--- consumer --- > %s\n", s)
+func (l *noopLogger) Output(calldepth int, s string) error {
 	return nil
 }
 
-// MessageHandler adheres to the nsq.Handler interface.
+// DefaultMessageHandler adheres to the nsq.Handler interface.
 // This allows us to define our own custome handlers for
 // our messages. Think of these handlers much like you would
 // an http handler.
-type MessageHandler struct{}
+type DefaultMessageHandler struct{}
 
 // HandleMessage is the only requirement needed to fulfill the
 // nsq.Handler interface. This where you'll write your message
 // handling logic.
-func (h *MessageHandler) HandleMessage(m *nsq.Message) error {
+func (h *DefaultMessageHandler) HandleMessage(m *nsq.Message) error {
 	if len(m.Body) == 0 {
 		// returning an error results in the message being re-enqueued
 		// a REQ is sent to nsqd
@@ -48,7 +69,7 @@ func (h *MessageHandler) HandleMessage(m *nsq.Message) error {
 	return nil
 }
 
-func Start() {
+func Start(c *Config) {
 	// The default config settings provide a pretty good starting point for
 	// our new consumer.
 	config := nsq.NewConfig()
@@ -64,13 +85,17 @@ func Start() {
 	// a major concurrency knob that can change the performance of your application.
 	consumer.ChangeMaxInFlight(200)
 
-	// Here we set the logger to our NoopNSQLogger to quiet down the default logs.
-	// At Reverb we use a custom structured logging format so we'll take the logging
-	// from here.
-	consumer.SetLogger(
-		&NoopNSQLogger{},
-		nsq.LogLevelError,
-	)
+	if c.Log {
+		consumer.SetLogger(
+			&innerLogger{},
+			nsq.LogLevelInfo,
+		)
+	} else {
+		consumer.SetLogger(
+			&noopLogger{},
+			nsq.LogLevelError,
+		)
+	}
 
 	// Injects our handler into the consumer. You'll define one handler
 	// per consumer, but you can have as many concurrently running handlers
@@ -78,7 +103,7 @@ func Start() {
 	// than your number of concurrent handlers you'll  starve your workers
 	// as there will never be enough in flight messages for your worker pool
 	consumer.AddConcurrentHandlers(
-		&MessageHandler{},
+		c.Handler,
 		20,
 	)
 
