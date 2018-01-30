@@ -27,6 +27,7 @@ func init() {
 }
 
 func main() {
+	// read from recovery topic
 	if consume {
 		go func() {
 			for i := 0; i < amount; i++ {
@@ -62,7 +63,10 @@ func produceHandler(message string) error {
 	}
 	producer.Write(data, config)
 
-	// 3. Start to wait for reply in lines+{id}
+	// 3a. Put topic name into the recovery database
+	// recovery database for handle replies after a failure on the service
+	// 3b. Start to wait for reply in lines+{id}
+
 	return nil
 }
 
