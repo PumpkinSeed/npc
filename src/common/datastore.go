@@ -8,18 +8,23 @@ import (
 	"os"
 )
 
-type Storage struct {
+type Storage interface {
+	Write(data ...string) error
+	Remove(line string) error
+}
+
+type StorageHandler struct {
 	Name string
 	F    *os.File
 }
 
-func NewStorage(name string) *Storage {
-	return &Storage{
+func NewStorage(name string) *StorageHandler {
+	return &StorageHandler{
 		Name: name,
 	}
 }
 
-func (s *Storage) init(opt int) error {
+func (s *StorageHandler) init(opt int) error {
 	if _, err := os.Stat(s.Name); os.IsNotExist(err) {
 		s.F, err = os.Create(s.Name)
 		return err
@@ -33,11 +38,11 @@ func (s *Storage) init(opt int) error {
 	return nil
 }
 
-func (s *Storage) close() error {
+func (s *StorageHandler) close() error {
 	return s.F.Close()
 }
 
-func (s *Storage) Write(data ...string) error {
+func (s *StorageHandler) Write(data ...string) error {
 	var err error
 	err = s.init(os.O_APPEND | os.O_WRONLY)
 	if err != nil {
@@ -51,7 +56,7 @@ func (s *Storage) Write(data ...string) error {
 	return err
 }
 
-func (s *Storage) indexOf(line string) int {
+func (s *StorageHandler) indexOf(line string) int {
 	var counter = 1
 	scanner := bufio.NewScanner(s.F)
 	scanner.Split(bufio.ScanLines)
@@ -65,7 +70,7 @@ func (s *Storage) indexOf(line string) int {
 	return -1
 }
 
-func (s *Storage) Remove(line string) error {
+func (s *StorageHandler) Remove(line string) error {
 	var err error
 	err = s.init(os.O_APPEND | os.O_RDWR)
 	if err != nil {

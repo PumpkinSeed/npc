@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	topic = "lines"
-	ch    = "metrics"
-	log   = true
+	topic       = "lines"
+	ch          = "metrics"
+	log         = true
+	storagePath = "test.db"
 )
 
 var consume bool
@@ -27,17 +28,19 @@ func init() {
 }
 
 func main() {
+	storage := common.NewStorage(storagePath)
+
 	// read from recovery topic
 	if consume {
 		go func() {
 			for i := 0; i < amount; i++ {
-				produceHandler(randStringRunes(10))
+				produceHandler(randStringRunes(10), storage)
 			}
 		}()
 		consumeHandler()
 	} else {
 		for i := 0; i < amount; i++ {
-			produceHandler(randStringRunes(10))
+			produceHandler(randStringRunes(10), storage)
 		}
 	}
 }
@@ -50,10 +53,10 @@ func consumeHandler() {
 	// 2. Message Handler produce back to the lines+id topic
 }
 
-func produceHandler(message string) error {
+func produceHandler(msg string, s common.Storage) error {
 	config := producer.NewConfig(topic, log)
 
-	m, err := common.NewMessage(message)
+	m, err := common.NewMessage(msg)
 	if err != nil {
 		return err
 	}
@@ -63,11 +66,16 @@ func produceHandler(message string) error {
 	}
 	producer.Write(data, config)
 
-	// 3a. Put topic name into the recovery database
+	s.Write(getTopicName(topic, m.ID))
 	// recovery database for handle replies after a failure on the service
+
 	// 3b. Start to wait for reply in lines+{id}
 
 	return nil
+}
+
+func getTopicName(topic, id string) string {
+	return topic + "-" + id
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
