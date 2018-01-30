@@ -75,7 +75,7 @@ func Start(c *Config) {
 	config := nsq.NewConfig()
 
 	// Create a NewConsumer with the name of our topic, the channel, and our config
-	consumer, err := nsq.NewConsumer("clicks", "metrics", config)
+	consumer, err := nsq.NewConsumer(c.Topic, c.Channel, config)
 	if err != nil {
 		log.Fatal(err) // If there is an error, halt the application
 	}
