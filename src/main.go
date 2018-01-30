@@ -94,7 +94,7 @@ func (h *messageHandler) HandleMessage(m *nsq.Message) error {
 	if err != nil {
 		return err
 	}
-	//h.storage.Remove(utils.GetTopicName(topic, msg.ID))
+	h.storage.Remove(utils.GetTopicName(topic, msg.ID))
 	fmt.Println(msg.ID)
 
 	// Returning nil signals to the consumer that the message has

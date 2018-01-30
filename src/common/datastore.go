@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 type Storage interface {
@@ -62,7 +63,7 @@ func (s *StorageHandler) indexOf(line string) int {
 	scanner.Split(bufio.ScanLines)
 
 	for scanner.Scan() {
-		if scanner.Text() == line {
+		if strings.Contains(scanner.Text(), line) {
 			return counter
 		}
 		counter++
