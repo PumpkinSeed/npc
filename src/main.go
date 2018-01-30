@@ -18,7 +18,8 @@ import (
 const (
 	topic       = "lines"
 	ch          = "metrics"
-	log         = true
+	chBack      = "back"
+	log         = false
 	storagePath = "test.db"
 )
 
@@ -73,6 +74,8 @@ func produceHandler(msg string, s common.Storage) error {
 	s.Write(utils.GetTopicName(topic, m.ID))
 	// recovery database for handle replies after a failure on the service
 
+	configConsumer := consumer.NewConfig(utils.GetTopicName(topic, m.ID), chBack, true, log, &messageHandlerBack{s})
+	go consumer.Start(configConsumer)
 	// 3b. Start to wait for reply in lines+{id}
 
 	return nil
@@ -112,7 +115,30 @@ func (h *messageHandler) HandleMessage(m *nsq.Message) error {
 	producer.Write(data, config)
 
 	h.storage.Remove(singleTopic)
-	fmt.Println(msg.ID)
+	fmt.Println(msg)
+
+	// Returning nil signals to the consumer that the message has
+	// been handled with success. A FIN is sent to nsqd
+	return nil
+}
+
+type messageHandlerBack struct {
+	storage common.Storage
+}
+
+func (h *messageHandlerBack) HandleMessage(m *nsq.Message) error {
+	if len(m.Body) == 0 {
+		// returning an error results in the message being re-enqueued
+		// a REQ is sent to nsqd
+		return errors.New("body is blank re-enqueue message")
+	}
+
+	/*var rs common.ReadySignal
+	err := json.Unmarshal(m.Body, &rs)
+	if err != nil {
+		return err
+	}*/
+	fmt.Println(string(m.Body))
 
 	// Returning nil signals to the consumer that the message has
 	// been handled with success. A FIN is sent to nsqd
