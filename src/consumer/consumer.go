@@ -12,18 +12,20 @@ import (
 )
 
 type Config struct {
-	Log     bool
-	Channel string
-	Topic   string
-	Handler nsq.Handler
+	Log                bool
+	Channel            string
+	Topic              string
+	SingleMessageTopic bool
+	Handler            nsq.Handler
 }
 
-func NewConfig(topic, ch string, log bool, handler nsq.Handler) *Config {
+func NewConfig(topic, ch string, smt, log bool, handler nsq.Handler) *Config {
 	return &Config{
-		Topic:   topic,
-		Channel: ch,
-		Log:     log,
-		Handler: handler,
+		Topic:              topic,
+		Channel:            ch,
+		Log:                log,
+		SingleMessageTopic: smt,
+		Handler:            handler,
 	}
 }
 

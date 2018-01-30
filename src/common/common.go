@@ -8,6 +8,26 @@ import (
 	"time"
 )
 
+type ReadySignal struct {
+	ID        string `json:"id"`
+	Done      bool   `json:"done"`
+	MessageID string `json:"message_id"`
+	Timestamp string `json:"timestamp"`
+}
+
+func NewReadySignal(mID string) (ReadySignal, error) {
+	id, err := pseudoUUID()
+	if err != nil {
+		return ReadySignal{}, err
+	}
+	return ReadySignal{
+		ID:        id,
+		Done:      true,
+		MessageID: mID,
+		Timestamp: timestamp(),
+	}, nil
+}
+
 type Message struct {
 	ID        string `json:"id"`
 	Message   string `json:"message"`

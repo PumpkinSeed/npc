@@ -1,16 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
 	"time"
 
-	"github.com/PumpkinSeed/durable-nsq-example/src/common"
-	"github.com/PumpkinSeed/durable-nsq-example/src/consumer"
-	"github.com/PumpkinSeed/durable-nsq-example/src/producer"
-	"github.com/PumpkinSeed/durable-nsq-example/src/utils"
+	"github.com/PumpkinSeed/nsq-rpc/src/common"
+	"github.com/PumpkinSeed/nsq-rpc/src/consumer"
+	"github.com/PumpkinSeed/nsq-rpc/src/producer"
+	"github.com/PumpkinSeed/nsq-rpc/src/utils"
 	nsq "github.com/nsqio/go-nsq"
 )
 
@@ -50,10 +51,9 @@ func main() {
 }
 
 func consumeHandler(s common.Storage) {
-	config := consumer.NewConfig(topic, ch, log, &messageHandler{s})
+	config := consumer.NewConfig(topic, ch, false, log, &messageHandler{s})
 	consumer.Start(config)
 
-	// 1. Start to consume
 	// 2. Message Handler produce back to the lines+id topic
 }
 
@@ -94,7 +94,24 @@ func (h *messageHandler) HandleMessage(m *nsq.Message) error {
 	if err != nil {
 		return err
 	}
-	h.storage.Remove(utils.GetTopicName(topic, msg.ID))
+
+	singleTopic := utils.GetTopicName(topic, msg.ID)
+
+	config := producer.NewConfig(singleTopic, log)
+
+	rs, err := common.NewReadySignal(msg.ID)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(rs)
+	if err != nil {
+		return err
+	}
+
+	producer.Write(data, config)
+
+	h.storage.Remove(singleTopic)
 	fmt.Println(msg.ID)
 
 	// Returning nil signals to the consumer that the message has
