@@ -18,7 +18,7 @@ type StorageHandler struct {
 	F    *os.File
 }
 
-func NewStorage(name string) *StorageHandler {
+func NewStorage(name string) Storage {
 	return &StorageHandler{
 		Name: name,
 	}

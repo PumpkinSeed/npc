@@ -1,13 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/PumpkinSeed/durable-nsq-example/src/common"
 	"github.com/PumpkinSeed/durable-nsq-example/src/consumer"
 	"github.com/PumpkinSeed/durable-nsq-example/src/producer"
+	"github.com/PumpkinSeed/durable-nsq-example/src/utils"
+	nsq "github.com/nsqio/go-nsq"
 )
 
 const (
@@ -34,19 +38,19 @@ func main() {
 	if consume {
 		go func() {
 			for i := 0; i < amount; i++ {
-				produceHandler(randStringRunes(10), storage)
+				produceHandler(utils.RandStringRunes(10), storage)
 			}
 		}()
-		consumeHandler()
+		consumeHandler(storage)
 	} else {
 		for i := 0; i < amount; i++ {
-			produceHandler(randStringRunes(10), storage)
+			produceHandler(utils.RandStringRunes(10), storage)
 		}
 	}
 }
 
-func consumeHandler() {
-	config := consumer.NewConfig(topic, ch, log, &consumer.DefaultMessageHandler{})
+func consumeHandler(s common.Storage) {
+	config := consumer.NewConfig(topic, ch, log, &messageHandler{s})
 	consumer.Start(config)
 
 	// 1. Start to consume
@@ -66,7 +70,7 @@ func produceHandler(msg string, s common.Storage) error {
 	}
 	producer.Write(data, config)
 
-	s.Write(getTopicName(topic, m.ID))
+	s.Write(utils.GetTopicName(topic, m.ID))
 	// recovery database for handle replies after a failure on the service
 
 	// 3b. Start to wait for reply in lines+{id}
@@ -74,17 +78,26 @@ func produceHandler(msg string, s common.Storage) error {
 	return nil
 }
 
-func getTopicName(topic, id string) string {
-	return topic + "-" + id
+type messageHandler struct {
+	storage common.Storage
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+func (h *messageHandler) HandleMessage(m *nsq.Message) error {
+	if len(m.Body) == 0 {
+		// returning an error results in the message being re-enqueued
+		// a REQ is sent to nsqd
+		return errors.New("body is blank re-enqueue message")
 	}
-	t := time.Now()
-	return t.Format("2006-01-02 15:04:05") + " - " + string(b)
+
+	// Let's log our message!
+	msg, err := common.Decode(m.Body)
+	if err != nil {
+		return err
+	}
+	//h.storage.Remove(utils.GetTopicName(topic, msg.ID))
+	fmt.Println(msg.ID)
+
+	// Returning nil signals to the consumer that the message has
+	// been handled with success. A FIN is sent to nsqd
+	return nil
 }
