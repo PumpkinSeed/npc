@@ -133,12 +133,24 @@ func (h *messageHandlerBack) HandleMessage(m *nsq.Message) error {
 		return errors.New("body is blank re-enqueue message")
 	}
 
-	/*var rs common.ReadySignal
+	var rs common.ReadySignal
 	err := json.Unmarshal(m.Body, &rs)
 	if err != nil {
 		return err
-	}*/
-	fmt.Println(string(m.Body))
+	}
+	cmd := nsq.UnRegister(utils.GetTopicName(topic, rs.ID), "")
+	cnf := nsq.NewConfig()
+	addr := m.NSQDAddress
+
+	conn := nsq.NewConn(addr, cnf, &common.Delegate{})
+
+	err = conn.WriteCommand(cmd)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Printf("Write: %s\n", addr)
+	fmt.Println(utils.GetTopicName(topic, rs.ID))
 
 	// Returning nil signals to the consumer that the message has
 	// been handled with success. A FIN is sent to nsqd
