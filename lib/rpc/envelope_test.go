@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -28,12 +27,14 @@ func TestEncode(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
+	var testBody = "o"
+
 	var e = Envelope{
 		Method:        "put",
 		ReplyTo:       "rsc",
 		CorrelationID: 322232,
 		ExpiresAt:     int64(time.Now().Nanosecond()),
-		Body:          []byte("o"),
+		Body:          []byte(testBody),
 	}
 
 	encoded := e.Encode()
@@ -43,5 +44,39 @@ func TestDecode(t *testing.T) {
 		t.Error(err)
 	}
 
-	fmt.Println(e2.Body)
+	if string(e2.Body) != testBody {
+		t.Errorf("Body should be %s, instead of %s", string(e2.Body), testBody)
+	}
+}
+
+func TestExpired(t *testing.T) {
+	var testBody = "o"
+
+	var e = Envelope{
+		Method:        "put",
+		ReplyTo:       "rsc",
+		CorrelationID: 322232,
+		ExpiresAt:     int64(time.Now().Nanosecond()),
+		Body:          []byte(testBody),
+	}
+
+	if !e.Expired() {
+		t.Error("Expired should be true")
+	}
+}
+
+func TestReply(t *testing.T) {
+	var req = Envelope{
+		Method:        "put",
+		ReplyTo:       "rsc",
+		CorrelationID: 322232,
+		ExpiresAt:     int64(time.Now().Nanosecond()),
+		Body:          []byte("request"),
+	}
+
+	resp := req.Reply([]byte("response"), nil)
+
+	if string(resp.Body) != "response" {
+		t.Errorf("Body should be %s, instead of %s", string(resp.Body), "response")
+	}
 }
