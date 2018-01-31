@@ -53,6 +53,7 @@ func Write(message []byte, c *Config) {
 	}
 
 	err := producer.Publish(c.Topic, message)
+
 	if err != nil {
 		log.Panic("Could not connect")
 	}
