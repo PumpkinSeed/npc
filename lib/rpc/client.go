@@ -26,12 +26,15 @@ type Client struct {
 // publisher will be used for sending request on reqTopic.
 // rspTopic will be send in each message envelope, server will reply on that topic.
 func NewClient(publisher *nsq.Producer, reqTopic, rspTopic string) *Client {
+	// seed the msgNo
 	rand.Seed(time.Now().UnixNano())
+
+	// return the setted up client
 	return &Client{
 		publisher:   publisher,
 		reqTopic:    reqTopic,
 		rspTopic:    rspTopic,
-		msgNo:       rand.Uint32(),
+		msgNo:       rand.Uint32(), //@todo uint64
 		subscribers: make(map[uint32]chan *Envelope),
 	}
 }
@@ -95,9 +98,13 @@ func (c *Client) CallTopic(ctx context.Context, reqTopic, typ string, req []byte
 	}
 }
 
+// get correlation id
 func (c *Client) correlationID() uint32 {
+	// lock the critical section to avoid race condition
 	c.Lock()
 	defer c.Unlock()
+
+	// if the msgNo is the max of the uint32 set to 0
 	if c.msgNo == math.MaxUint32 {
 		c.msgNo = 0
 	} else {
