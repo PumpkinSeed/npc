@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pkg/errors"
 )
 
 // Client rpc client side
@@ -49,7 +49,7 @@ func (c *Client) HandleMessage(m *nsq.Message) error {
 	rsp, err := Decode(m.Body)
 	if err != nil {
 		fin()
-		return errors.Wrap(err, "envelope unpack failed")
+		return errors.New("envelope unpack failed" + err.Error())
 	}
 	// find subscriber waiting for response
 	if s, found := c.get(rsp.CorrelationID); found {
@@ -86,7 +86,8 @@ func (c *Client) CallTopic(ctx context.Context, reqTopic, typ string, req []byte
 	c.add(correlationID, rspCh)
 	// send request to the server
 	if err := c.publisher.Publish(reqTopic, eReq.Encode()); err != nil {
-		return nil, "", errors.Wrap(err, "nsq publish failed")
+		return nil, "", errors.New("nsq publish failed" + err.Error())
+
 	}
 	// wiat for response or context timeout/cancelation
 	select {
@@ -113,9 +114,13 @@ func (c *Client) correlationID() uint32 {
 	return c.msgNo
 }
 
+// add subscriber channel to the subsrcibers
 func (c *Client) add(id uint32, ch chan *Envelope) {
+	// lock the critical section to avoid race condition
 	c.Lock()
 	defer c.Unlock()
+
+	// add subscriber channel to the subsrcibers
 	c.subscribers[id] = ch
 }
 

@@ -18,15 +18,24 @@ func TestNewClient(t *testing.T) {
 	assert.NotNil(t, c.msgNo, "shouldn't be nil")
 }
 
-/*
-	The following tests requires local nsq
-*/
-
 func TestCorrelationID(t *testing.T) {
 	p, _ := nsq.NewProducer("", nsq.NewConfig())
 	c := NewClient(p, "request", "response")
 
-	t.Log(c.msgNo)
 	id := c.correlationID()
 	t.Log(id)
 }
+
+func TestAdd(t *testing.T) {
+	rspCh := make(chan *Envelope)
+	p, _ := nsq.NewProducer("", nsq.NewConfig())
+	c := NewClient(p, "request", "response")
+	id := c.correlationID()
+
+	c.add(id, rspCh)
+	assert.NotNil(t, c.subscribers[id])
+}
+
+/*
+	The following tests requires local nsq
+*/
