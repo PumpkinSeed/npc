@@ -45,8 +45,10 @@ func New(cfg *Config, topic, channel string, handler nsq.Handler) (*nsq.Consumer
 	// setup the logger
 	consumer.SetLogger(cfg.Logger, cfg.LogLevel)
 
+	consumer.AddHandler(handler)
+
 	// add concurrent handlers
-	consumer.AddConcurrentHandlers(handler, cfg.Concurrency)
+	//consumer.AddConcurrentHandlers(handler, cfg.Concurrency)
 
 	// based on the defined addresses connect to the NSQ cluster
 	if addrs := cfg.NSQLookupdAddresses; addrs != nil {

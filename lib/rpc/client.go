@@ -29,6 +29,7 @@ func NewClient(publisher *nsq.Producer, reqTopic, rspTopic string) *Client {
 	// seed the msgNo
 	rand.Seed(time.Now().UnixNano())
 
+	log("#-NewClient: client init")
 	// return the setted up client
 	return &Client{
 		publisher:   publisher,
@@ -41,16 +42,22 @@ func NewClient(publisher *nsq.Producer, reqTopic, rspTopic string) *Client {
 
 // HandleMessage accepts incoming server reponses.
 func (c *Client) HandleMessage(m *nsq.Message) error {
+	log("#-Client-HandleMessage: fin define")
 	fin := func() {
 		m.DisableAutoResponse()
 		m.Finish()
 	}
+
+	log("#-Client-HandleMessage: decode body")
 	// unpack message
 	rsp, err := Decode(m.Body)
 	if err != nil {
 		fin()
+		log("#-Client-CallTopic: " + err.Error())
 		return errors.New("envelope unpack failed" + err.Error())
 	}
+
+	log("#-Client-HandleMessage: find subscriber")
 	// find subscriber waiting for response
 	if s, found := c.get(rsp.CorrelationID); found {
 		if s != nil {
@@ -60,17 +67,21 @@ func (c *Client) HandleMessage(m *nsq.Message) error {
 		// nothing to do in that case
 		return nil
 	}
+
+	log("#-Client-HandleMessage: fin")
 	fin()
 	return fmt.Errorf("subscriber not found for %d", rsp.CorrelationID)
 }
 
 func (c *Client) Call(ctx context.Context, typ string, req []byte) ([]byte, string, error) {
+	log("#-Client-Call: CallTopic")
 	return c.CallTopic(ctx, c.reqTopic, typ, req)
 }
 
 // Call entry point for request from application.
 func (c *Client) CallTopic(ctx context.Context, reqTopic, typ string, req []byte) ([]byte, string, error) {
 	// craete envelope
+	log("#-Client-CallTopic: correlationID")
 	correlationID := c.correlationID()
 	eReq := &Envelope{
 		Method:        typ,
@@ -78,22 +89,28 @@ func (c *Client) CallTopic(ctx context.Context, reqTopic, typ string, req []byte
 		CorrelationID: correlationID,
 		Body:          req,
 	}
+	log("#-Client-CallTopic: deadline")
 	if d, ok := ctx.Deadline(); ok {
 		eReq.ExpiresAt = d.Unix()
 	}
 	rspCh := make(chan *Envelope)
 	// subscriebe for response on that correlationID
+	log("#-Client-CallTopic: add")
 	c.add(correlationID, rspCh)
 	// send request to the server
-	if err := c.publisher.Publish(reqTopic, eReq.Encode()); err != nil {
-		return nil, "", errors.New("nsq publish failed" + err.Error())
 
+	log("#-Client-CallTopic: publish")
+	if err := c.publisher.Publish(reqTopic, eReq.Encode()); err != nil {
+		log("#-Client-CallTopic: " + err.Error())
+		return nil, "", errors.New("nsq publish failed" + err.Error())
 	}
 	// wiat for response or context timeout/cancelation
+	log("#-Client-CallTopic: wait for response")
 	select {
 	case rsp := <-rspCh:
 		return rsp.Body, rsp.Error, nil
 	case <-ctx.Done():
+		log("#-Client-CallTopic: timeout")
 		c.timeout(correlationID)
 		return nil, "", ctx.Err()
 	}
