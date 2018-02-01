@@ -14,17 +14,31 @@ import (
 
 // Client rpc client side
 type Client struct {
-	publisher   *nsq.Producer
-	reqTopic    string
-	rspTopic    string
-	msgNo       uint32
+	// publisher is the nsq producer which responsible
+	// for produce the message passed in the Call method
+	publisher *nsq.Producer
+
+	// reqTopic stores the request topic name
+	reqTopic string
+
+	// rspTopic stores the response topic name
+	rspTopic string
+
+	// msgNo determine the id of the message
+	// mostly unique and random to identify the
+	// the message and it's response
+	msgNo uint32
+
+	// subscribers ???
 	subscribers map[uint32]chan *Envelope
+
+	// add mutex to handle critical points
 	sync.Mutex
 }
 
-// NewClient creates new rpc client.
-// publisher will be used for sending request on reqTopic.
-// rspTopic will be send in each message envelope, server will reply on that topic.
+// NewClient creates new rpc client
+// publisher will be used for sending request on reqTopic
+// rspTopic will be send in each message envelope, server will reply on that topic
 func NewClient(publisher *nsq.Producer, reqTopic, rspTopic string) *Client {
 	// seed the msgNo
 	rand.Seed(time.Now().UnixNano())

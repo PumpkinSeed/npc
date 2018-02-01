@@ -32,6 +32,7 @@ type appServer interface {
 // producer is an nsq producer based on the replyTo topic
 // which is publish the response
 type Server struct {
+	// ctx is the
 	ctx      context.Context
 	srv      appServer
 	producer *nsq.Producer
@@ -53,7 +54,8 @@ func NewServer(ctx context.Context, srv appServer, producer *nsq.Producer) *Serv
 // by the appServer
 func (s *Server) HandleMessage(m *nsq.Message) error {
 	// fin is the final function called before the function ends
-	// ..... @todo what is ...?
+	// the DisableAutoResponse stop go-nsq from responding on that
+	// behalf, the Finish the message
 	fin := func() {
 		m.DisableAutoResponse()
 		m.Finish()
@@ -79,6 +81,7 @@ func (s *Server) HandleMessage(m *nsq.Message) error {
 
 	// periodically call touch on the nsq message while app is still processing it
 	// issue what it solve in long-running consumers provided at the function definition
+	// important it's call
 	defer touchMessage(s.ctx, m)()
 
 	// call the user defined entry point to get the response of the request
@@ -114,6 +117,9 @@ func (s *Server) HandleMessage(m *nsq.Message) error {
 // touchMessage to prevent auto-requeing in the nsqd
 // https://github.com/nsqio/go-nsq/issues/204
 func touchMessage(ctx context.Context, m *nsq.Message) func() {
+	// creates a new context with cancel and put it
+	// into the periodical call and touch the message
+	// in every touchInterval
 	ctxTouch, cancel := context.WithCancel(ctx)
 	go func() {
 		for {
@@ -125,5 +131,8 @@ func touchMessage(ctx context.Context, m *nsq.Message) func() {
 			}
 		}
 	}()
+
+	// return the cancel function to cancel it when
+	// the message handler had been done
 	return cancel
 }

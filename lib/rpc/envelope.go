@@ -7,21 +7,27 @@ import (
 )
 
 var (
-	headerSeparator = []byte{10} //new line
+	//new line separator
+	headerSeparator = []byte{10}
 )
 
 // Envelope arround message for request response communication over nsq
 type Envelope struct {
 	// name of the method to call on the server side
 	Method string `json:"m,omitempty"`
+
 	// nsq topic to send reply to
 	ReplyTo string `json:"r,omitempty"`
+
 	// connection between request and response
 	CorrelationID uint32 `json:"c,omitempty"`
+
 	// unix timestamp when message expires, after that should be dropped
 	ExpiresAt int64 `json:"x,omitempty"`
+
 	// applicationn error reponse, if server side failed and Body is missing
 	Error string `json:"e,omitempty"`
+
 	// message body
 	Body []byte `json:"-"`
 }
