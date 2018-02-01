@@ -10,9 +10,9 @@ var (
 	headerSeparator = []byte{10} //new line
 )
 
-// Envelope arround message for request response communication over nsq.
+// Envelope arround message for request response communication over nsq
 type Envelope struct {
-	// method to call on the server side
+	// name of the method to call on the server side
 	Method string `json:"m,omitempty"`
 	// nsq topic to send reply to
 	ReplyTo string `json:"r,omitempty"`
@@ -26,7 +26,7 @@ type Envelope struct {
 	Body []byte `json:"-"`
 }
 
-// Reply creates reply Envelope from request Envelope.
+// Reply creates reply Envelope from request Envelope
 func (m *Envelope) Reply(body []byte, err error) *Envelope {
 	// refresh Envelope with the new body
 	e := &Envelope{
@@ -34,14 +34,14 @@ func (m *Envelope) Reply(body []byte, err error) *Envelope {
 		Body:          body,
 	}
 
-	// attach err if it is not nil
+	// attach err to the Envelope if it's not nil
 	if err != nil {
 		e.Error = err.Error()
 	}
 	return e
 }
 
-// Expired returns true if message expired.
+// Expired returns true if message expired
 func (m *Envelope) Expired() bool {
 	// checks ExpiresAt is nil of int
 	if m.ExpiresAt <= 0 {
@@ -52,7 +52,7 @@ func (m *Envelope) Expired() bool {
 	return time.Now().Unix() > m.ExpiresAt
 }
 
-// Decode decodes envelope from bytes.
+// Decode decodes envelope from bytes
 func Decode(buf []byte) (*Envelope, error) {
 	// get the body chunk
 	parts := bytes.SplitN(buf, headerSeparator, 2)
@@ -70,7 +70,7 @@ func Decode(buf []byte) (*Envelope, error) {
 	return e, nil
 }
 
-// Encode encodes envelope into bytes for putting on wire.
+// Encode encodes envelope into bytes for putting on wire
 func (m *Envelope) Encode() []byte {
 	// encode the Envelope to JSON without the body
 	buf, _ := json.Marshal(m)
