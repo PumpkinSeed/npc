@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/PumpkinSeed/nsq-rpc/lib/common"
@@ -24,18 +25,18 @@ const (
 var localNSQd = "127.0.0.1:4150"
 
 func main() {
-	//var wg sync.WaitGroup
+	var wg sync.WaitGroup
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	rand.Seed(time.Now().UTC().UnixNano())
-	//for i := 0; i < 100; i++ {
-	//	wg.Add(1)
-	action()
-	//	fmt.Println(runtime.NumGoroutine())
-	//}
+	for i := 0; i < 100; i++ {
+		//wg.Add(1)
+		action(&wg)
+		//	fmt.Println(runtime.NumGoroutine())
+	}
 	//wg.Wait()
 }
 
-func action() {
+func action(wg *sync.WaitGroup) {
 
 	l := common.SingleLogger{}
 
@@ -78,8 +79,8 @@ func action() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%d + %d =  %d\n", x, y, z)
-	// defer wg.Done()
+	fmt.Printf("=============================================> %d + %d =  %d\n", x, y, z)
+	//defer wg.Done()
 }
 
 func randInt(min int, max int) int {
