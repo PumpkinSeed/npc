@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PumpkinSeed/nsq-rpc/lib/common"
-	"github.com/PumpkinSeed/nsq-rpc/lib/consumer"
-	"github.com/PumpkinSeed/nsq-rpc/lib/producer"
-	"github.com/PumpkinSeed/nsq-rpc/lib/rpc"
+	"github.com/PumpkinSeed/npc/lib/common"
+	"github.com/PumpkinSeed/npc/lib/consumer"
+	"github.com/PumpkinSeed/npc/lib/producer"
+	"github.com/PumpkinSeed/npc/lib/rpc"
 	nsq "github.com/nsqio/go-nsq"
 )
 

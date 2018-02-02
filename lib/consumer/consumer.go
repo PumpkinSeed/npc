@@ -1,7 +1,7 @@
 package consumer
 
 import (
-	"github.com/PumpkinSeed/nsq-rpc/lib/common"
+	"github.com/PumpkinSeed/npc/lib/common"
 	nsq "github.com/nsqio/go-nsq"
 )
 

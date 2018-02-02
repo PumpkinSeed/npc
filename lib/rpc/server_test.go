@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PumpkinSeed/nsq-rpc/lib/common"
-	"github.com/PumpkinSeed/nsq-rpc/lib/consumer"
-	"github.com/PumpkinSeed/nsq-rpc/lib/producer"
+	"github.com/PumpkinSeed/npc/lib/common"
+	"github.com/PumpkinSeed/npc/lib/consumer"
+	"github.com/PumpkinSeed/npc/lib/producer"
 	nsq "github.com/nsqio/go-nsq"
 )
 

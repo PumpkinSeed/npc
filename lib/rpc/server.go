@@ -20,10 +20,10 @@ var (
 	touchInterval = 45 * time.Second
 )
 
-// appServer determine the entry point for all rpc request
+// AppServer determine the entry point for all rpc request
 // typ is the resource what the client want to reach
 // req is the body of the request
-type appServer interface {
+type AppServer interface {
 	Serve(ctx context.Context, typ string, req []byte) ([]byte, error)
 }
 
@@ -34,13 +34,13 @@ type appServer interface {
 type Server struct {
 	// ctx is the
 	ctx      context.Context
-	srv      appServer
+	srv      AppServer
 	producer *nsq.Producer
 }
 
 // NewServer creates new rpc server for appServer
 // producer will be used for sending replies
-func NewServer(ctx context.Context, srv appServer, producer *nsq.Producer) *Server {
+func NewServer(ctx context.Context, srv AppServer, producer *nsq.Producer) *Server {
 	return &Server{
 		ctx:      ctx,
 		srv:      srv,

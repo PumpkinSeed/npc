@@ -8,10 +8,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/PumpkinSeed/nsq-rpc/src/common"
-	"github.com/PumpkinSeed/nsq-rpc/src/consumer"
-	"github.com/PumpkinSeed/nsq-rpc/src/producer"
-	"github.com/PumpkinSeed/nsq-rpc/src/utils"
+	"github.com/PumpkinSeed/npc/src/common"
+	"github.com/PumpkinSeed/npc/src/consumer"
+	"github.com/PumpkinSeed/npc/src/producer"
+	"github.com/PumpkinSeed/npc/src/utils"
 	nsq "github.com/nsqio/go-nsq"
 )
 
