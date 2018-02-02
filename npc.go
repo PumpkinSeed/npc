@@ -1,4 +1,4 @@
-package rpc
+package npc
 
 type T int
 
