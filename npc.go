@@ -1,7 +1,12 @@
 package npc
 
 import (
+	"context"
 	"errors"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/PumpkinSeed/npc/lib/common"
 	"github.com/PumpkinSeed/npc/lib/consumer"
@@ -34,15 +39,14 @@ type Main struct {
 	reqTopic string
 	logger   common.Logger
 	err      error
+	channel  string
 
 	// Client related data
 	rspTopic  string
-	resource  string
 	rpcClient *rpc.Client
 
 	// Server releated data
 	app       rpc.AppServer
-	channel   string
 	rpcServer *rpc.Server
 }
 
@@ -59,51 +63,55 @@ func New(t T) *Main {
 	return m
 }
 
-func (m *Main) Init(p *producer.Config, c *consumer.Config, rt string, logger common.Logger) *Main {
+func (m *Main) Init(p *producer.Config, c *consumer.Config, rt string, channel string, logger common.Logger) *Main {
 	m.p = p
 	m.c = c
 	m.reqTopic = rt
 	m.logger = logger
+	m.channel = channel
+
+	if m.p == nil {
+		m.err = errors.New("empty producer config")
+		return m
+	}
+	if m.c == nil {
+		m.err = errors.New("empty consumer config")
+		return m
+	}
 
 	return m
-}
-
-func (m *Main) SetupNSQ() {
-	var err error
-
-	m.producer, err = producer.New(m.p)
-	if err != nil {
-		m.err = err
-	}
-
-	var handler nsq.Handler
-	if m.server && m.rpcServer != nil {
-		handler = m.rpcServer
-	} else {
-		m.err = errors.New("")
-	}
-	if m.client && m.rpcClient != nil {
-		handler = m.rpcClient
-	}
-
-	m.consumer, err = consumer.New(m.c, m.reqTopic, m.channel, handler)
-	if err != nil {
-		m.err = err
-	}
 }
 
 /*
 	Server related methods
 */
 
-func (m *Main) Server(app rpc.AppServer, channel string) *Main {
+func (m *Main) Server(app rpc.AppServer) (*Main, error) {
 	m.app = app
-	m.channel = channel
 
-	return m
+	return m, m.err
 }
 
 func (m *Main) Listen() error {
+	var err error
+
+	m.producer, err = producer.New(m.p)
+
+	// rpc server: accepts request, calls application, sends response
+	ctx, cancel := context.WithCancel(context.Background())
+	m.rpcServer = rpc.NewServer(ctx, m.app, m.producer)
+
+	m.consumer, err = consumer.New(m.c, m.reqTopic, m.channel, m.rpcServer)
+	if err != nil {
+		return err
+	}
+
+	// clean exit
+	defer m.producer.Stop() // 3. stop response producer
+	defer cancel()          // 2. cancel any pending operation (returns unfinished messages to nsq)
+	defer m.consumer.Stop() // 1. stop accepting new requestser.Stop() // 1. stop accepting new requests
+
+	waitForInterupt()
 
 	return nil
 }
@@ -112,9 +120,46 @@ func (m *Main) Listen() error {
 	Client related methods
 */
 
-func (m *Main) Client(rt string, resource string) *Main {
+func (m *Main) Client(rt string) (*Main, error) {
 	m.rspTopic = rt
-	m.resource = resource
 
-	return m
+	return m, m.err
+}
+
+func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
+	var err error
+
+	m.producer, err = producer.New(m.p)
+
+	// rpc client: sends requests, waits and accepts responses
+	//             provides interface for application
+	rpcClient := rpc.NewClient(m.producer, m.reqTopic, m.rspTopic)
+
+	m.consumer, err = consumer.New(m.c, m.rspTopic, m.channel, rpcClient)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+
+	// clean exit
+	defer m.producer.Stop() // 3. stop producing new requests
+	defer cancel()          // 2. cancel any pending (waiting for responses)
+	defer m.consumer.Stop() // 1. stop listening for responses
+
+	rspBody, rspErr, err := rpcClient.Call(ctx, typ, msg)
+	if err != nil {
+		return nil, err
+	}
+	if rspErr != "" {
+		return nil, errors.New(rspErr)
+	}
+
+	return rspBody, nil
+}
+
+func waitForInterupt() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	<-c
 }

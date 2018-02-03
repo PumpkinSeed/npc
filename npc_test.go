@@ -8,15 +8,38 @@ import (
 	"github.com/PumpkinSeed/npc/lib/common"
 	"github.com/PumpkinSeed/npc/lib/consumer"
 	"github.com/PumpkinSeed/npc/lib/producer"
+	nsq "github.com/nsqio/go-nsq"
 )
 
+var localNSQd = "127.0.0.1:4150"
+
 func TestNewServer(t *testing.T) {
+	l := common.BlankLogger{}
 
-	m := New(Server).
-		Init(&producer.Config{}, &consumer.Config{}, "request", common.SingleLogger{}).
-		Server(&app{}, "server")
+	pConf := &producer.Config{
+		NSQConfig:   nsq.NewConfig(),
+		NSQDAddress: localNSQd,
+		Logger:      l,
+		LogLevel:    nsq.LogLevelInfo,
+	}
 
-	m.Listen()
+	cConf := &consumer.Config{
+		NSQConfig:   nsq.NewConfig(),
+		NSQDAddress: localNSQd,
+		Logger:      l,
+		LogLevel:    nsq.LogLevelInfo,
+	}
+
+	_, err := New(Server).
+		Init(pConf, cConf, "request", "server", common.SingleLogger{}).
+		Server(&app{})
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	//m.Listen()
 }
 
 type app struct{}

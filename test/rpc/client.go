@@ -1,18 +1,15 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/PumpkinSeed/npc"
 	"github.com/PumpkinSeed/npc/lib/common"
 	"github.com/PumpkinSeed/npc/lib/consumer"
 	"github.com/PumpkinSeed/npc/lib/producer"
-	"github.com/PumpkinSeed/npc/lib/rpc"
 	nsq "github.com/nsqio/go-nsq"
 )
 
@@ -37,7 +34,6 @@ func main() {
 }
 
 func action(wg *sync.WaitGroup) {
-
 	l := common.SingleLogger{}
 
 	pConf := &producer.Config{
@@ -47,12 +43,6 @@ func action(wg *sync.WaitGroup) {
 		LogLevel:    nsq.LogLevelInfo,
 	}
 
-	p, err := producer.New(pConf)
-
-	// rpc client: sends requests, waits and accepts responses
-	//             provides interface for application
-	rpcClient := rpc.NewClient(p, reqTopic, rspTopic)
-
 	// create consumer arround rpcClient
 	cConf := &consumer.Config{
 		NSQConfig:   nsq.NewConfig(),
@@ -60,81 +50,21 @@ func action(wg *sync.WaitGroup) {
 		Logger:      l,
 		LogLevel:    nsq.LogLevelInfo,
 	}
-	c, err := consumer.New(cConf, rspTopic, channel, rpcClient)
+
+	m, err := npc.New(npc.Client).
+		Init(pConf, cConf, "request", "server", l).
+		Client("response")
+
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
+		return
 	}
 
-	// application client
-	client := &client{t: rpcClient}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	// clean exit
-	defer p.Stop() // 3. stop producing new requests
-	defer cancel() // 2. cancel any pending (waiting for responses)
-	defer c.Stop() // 1. stop listening for responses
-	x := randInt(1, 30)
-	y := randInt(1, 30)
-	z, err := client.Add(ctx, x, y)
+	resp, err := m.Publish("Add", []byte("test"))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
+		return
 	}
-	fmt.Printf("=============================================> %d + %d =  %d\n", x, y, z)
-	//defer wg.Done()
-}
 
-func randInt(min int, max int) int {
-	return min + rand.Intn(max-min)
-}
-
-// transport is application interface for sending request to the remote server
-// method - server method name
-// req    - request
-// returns:
-//   reponse
-//   application error, string, "" if there is no error
-//   transport error
-type transport interface {
-	Call(ctx context.Context, method string, req []byte) ([]byte, string, error)
-}
-
-type client struct {
-	t transport
-}
-
-func (c *client) Add(ctx context.Context, x, y int) (int, error) {
-	req := &request{X: x, Y: y}
-	// marshall request
-	reqBuf, err := json.Marshal(req)
-	if err != nil {
-		return 0, err
-	}
-	// pass request to trasport, and get response
-	rspBuf, _, err := c.t.Call(ctx, "Add", reqBuf)
-	// request was canceled
-	if ctx.Err() != nil {
-		return 0, ctx.Err()
-	}
-	// request failed
-	if err != nil {
-		return 0, err
-	}
-	// unmarshal response
-	var rsp response
-	err = json.Unmarshal(rspBuf, &rsp)
-	if err != nil {
-		return 0, err
-	}
-	return rsp.Z, nil
-}
-
-// dto structures
-
-type request struct {
-	X int
-	Y int
-}
-
-type response struct {
-	Z int
+	fmt.Println(string(resp))
 }
