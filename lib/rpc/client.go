@@ -168,13 +168,13 @@ func (c *Client) correlationID() uint32 {
 	return c.msgNo
 }
 
-// add subscriber channel to the list of subsrcibers
+// add subscriber channel to the list of subscribers
 func (c *Client) add(id uint32, ch chan *Envelope) {
 	// lock the critical section to avoid race condition
 	c.Lock()
 	defer c.Unlock()
 
-	// add subscriber channel to the subsrcibers
+	// add subscriber channel to the subscribers
 	c.subscribers[id] = ch
 }
 

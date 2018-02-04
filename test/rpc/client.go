@@ -23,14 +23,9 @@ var localNSQd = "127.0.0.1:4150"
 
 func main() {
 	var wg sync.WaitGroup
-	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+
 	rand.Seed(time.Now().UTC().UnixNano())
-	for i := 0; i < 100; i++ {
-		//wg.Add(1)
-		action(&wg)
-		//	fmt.Println(runtime.NumGoroutine())
-	}
-	//wg.Wait()
+	action(&wg)
 }
 
 func action(wg *sync.WaitGroup) {
@@ -43,7 +38,6 @@ func action(wg *sync.WaitGroup) {
 		LogLevel:    nsq.LogLevelInfo,
 	}
 
-	// create consumer arround rpcClient
 	cConf := &consumer.Config{
 		NSQConfig:   nsq.NewConfig(),
 		NSQDAddress: localNSQd,
