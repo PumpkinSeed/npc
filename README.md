@@ -1,2 +1,2 @@
-# durable-nsq-example
-Example code and tests for durable nsq
+# npc
+RPC framework for NSQ

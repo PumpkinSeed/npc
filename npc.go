@@ -43,8 +43,10 @@ type Main struct {
 	rpcClient *rpc.Client
 
 	// Server releated data
-	app       rpc.AppServer
-	rpcServer *rpc.Server
+	app               rpc.AppServer
+	rpcServer         *rpc.Server
+	interruptor       func()
+	customInterruptor bool
 }
 
 // New creates a new instance of the Main handler based on the type
@@ -109,9 +111,18 @@ func (m *Main) Listen() error {
 	defer cancel() // 2. cancel any pending operation (returns unfinished messages to nsq)
 	defer c.Stop() // 1. stop accepting new requestser.Stop() // 1. stop accepting new requests
 
-	waitForInterupt()
+	if m.customInterruptor {
+		m.interruptor()
+	} else {
+		DefaultInterupt()
+	}
 
 	return nil
+}
+
+func (m *Main) SetInterruptor(i func()) {
+	m.customInterruptor = true
+	m.interruptor = i
 }
 
 /*
@@ -157,7 +168,7 @@ func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
 	return rspBody, nil
 }
 
-func waitForInterupt() {
+func DefaultInterupt() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
