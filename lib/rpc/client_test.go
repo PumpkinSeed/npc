@@ -4,18 +4,26 @@ import (
 	"testing"
 
 	nsq "github.com/nsqio/go-nsq"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewClient(t *testing.T) {
 	p, _ := nsq.NewProducer("", nsq.NewConfig())
 	c := NewClient(p, "request", "response")
 
-	assert.Equal(t, "request", c.reqTopic, "they should be equal")
-	assert.Equal(t, "response", c.rspTopic, "they should be equal")
+	// @todo remove testify
+	if c.reqTopic != "request" {
+		t.Errorf("reqTopic should be 'request', instead of %s", c.reqTopic)
+	}
+	if c.rspTopic != "response" {
+		t.Errorf("reqTopic should be 'response', instead of %s", c.rspTopic)
+	}
+	if c.publisher == nil {
+		t.Error("publisher should be nil")
+	}
 
-	assert.NotNil(t, c.publisher, "shouldn't be nil")
-	assert.NotNil(t, c.msgNo, "shouldn't be nil")
+	if c.msgNo == 0 {
+		t.Error("msgNo should be nil")
+	}
 }
 
 func TestCorrelationID(t *testing.T) {
@@ -33,7 +41,9 @@ func TestAdd(t *testing.T) {
 	id := c.correlationID()
 
 	c.add(id, rspCh)
-	assert.NotNil(t, c.subscribers[id])
+	if c.subscribers[id] == nil {
+		t.Error("subscribers[id] should be nil")
+	}
 }
 
 /*
