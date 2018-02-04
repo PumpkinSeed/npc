@@ -12,7 +12,6 @@ import (
 	"github.com/PumpkinSeed/npc/lib/consumer"
 	"github.com/PumpkinSeed/npc/lib/producer"
 	"github.com/PumpkinSeed/npc/lib/rpc"
-	nsq "github.com/nsqio/go-nsq"
 )
 
 // T the type of the npc
@@ -33,9 +32,7 @@ type Main struct {
 
 	// Common data for both handler
 	p        *producer.Config
-	producer *nsq.Producer
 	c        *consumer.Config
-	consumer *nsq.Consumer
 	reqTopic string
 	logger   common.Logger
 	err      error
@@ -94,22 +91,23 @@ func (m *Main) Server(app rpc.AppServer) (*Main, error) {
 
 func (m *Main) Listen() error {
 	var err error
+	// @todo dont listen if it is Client
 
-	m.producer, err = producer.New(m.p)
+	p, err := producer.New(m.p)
 
 	// rpc server: accepts request, calls application, sends response
 	ctx, cancel := context.WithCancel(context.Background())
-	m.rpcServer = rpc.NewServer(ctx, m.app, m.producer)
+	m.rpcServer = rpc.NewServer(ctx, m.app, p)
 
-	m.consumer, err = consumer.New(m.c, m.reqTopic, m.channel, m.rpcServer)
+	c, err := consumer.New(m.c, m.reqTopic, m.channel, m.rpcServer)
 	if err != nil {
 		return err
 	}
 
 	// clean exit
-	defer m.producer.Stop() // 3. stop response producer
-	defer cancel()          // 2. cancel any pending operation (returns unfinished messages to nsq)
-	defer m.consumer.Stop() // 1. stop accepting new requestser.Stop() // 1. stop accepting new requests
+	defer p.Stop() // 3. stop response producer
+	defer cancel() // 2. cancel any pending operation (returns unfinished messages to nsq)
+	defer c.Stop() // 1. stop accepting new requestser.Stop() // 1. stop accepting new requests
 
 	waitForInterupt()
 
@@ -128,14 +126,15 @@ func (m *Main) Client(rt string) (*Main, error) {
 
 func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
 	var err error
+	// @todo dont publish if it is Server
 
-	m.producer, err = producer.New(m.p)
+	p, err := producer.New(m.p)
 
 	// rpc client: sends requests, waits and accepts responses
 	//             provides interface for application
-	rpcClient := rpc.NewClient(m.producer, m.reqTopic, m.rspTopic)
+	rpcClient := rpc.NewClient(p, m.reqTopic, m.rspTopic)
 
-	m.consumer, err = consumer.New(m.c, m.rspTopic, m.channel, rpcClient)
+	c, err := consumer.New(m.c, m.rspTopic, m.channel, rpcClient)
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +142,9 @@ func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	// clean exit
-	defer m.producer.Stop() // 3. stop producing new requests
-	defer cancel()          // 2. cancel any pending (waiting for responses)
-	defer m.consumer.Stop() // 1. stop listening for responses
+	defer p.Stop() // 3. stop producing new requests
+	defer cancel() // 2. cancel any pending (waiting for responses)
+	defer c.Stop() // 1. stop listening for responses
 
 	rspBody, rspErr, err := rpcClient.Call(ctx, typ, msg)
 	if err != nil {

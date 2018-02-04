@@ -57,13 +57,11 @@ func action(wg *sync.WaitGroup) {
 
 	if err != nil {
 		panic(err)
-		return
 	}
 
 	resp, err := m.Publish("Add", []byte("test"))
 	if err != nil {
 		panic(err)
-		return
 	}
 
 	fmt.Println(string(resp))
