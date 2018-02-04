@@ -25,7 +25,17 @@ const (
 	Client
 )
 
-// Main handler
+// Main handler of the rpc framework
+// server and client booleans determine the type of the handler
+// p is config for producer, c is config for consumer
+// reqTopic determine the request topic name
+// logger stores the nsq inner logger
+// err stores the errors occured in the setup and return at the end of the setup
+// channel stores the name of the channel for the topics
+// rspTopic define the response topic for the client
+// app stores the server related AppServer
+// interruptor stores the function called at the end of the server to handle custom interruption
+// customInterruptor boolean true if custum interruption setted up
 type Main struct {
 	server bool
 	client bool
@@ -39,12 +49,10 @@ type Main struct {
 	channel  string
 
 	// Client related data
-	rspTopic  string
-	rpcClient *rpc.Client
+	rspTopic string
 
 	// Server releated data
 	app               rpc.AppServer
-	rpcServer         *rpc.Server
 	interruptor       func()
 	customInterruptor bool
 }
@@ -62,6 +70,8 @@ func New(t T) *Main {
 	return m
 }
 
+// Init method do the initial setup for both handler
+// if the configs are nil values it will save an error for later
 func (m *Main) Init(p *producer.Config, c *consumer.Config, rt string, channel string, logger common.Logger) *Main {
 	m.p = p
 	m.c = c
@@ -85,24 +95,37 @@ func (m *Main) Init(p *producer.Config, c *consumer.Config, rt string, channel s
 	Server related methods
 */
 
+// Server do the setup for the server kind of handler
+// it waits an AppServer as parameter
+// return the error occured in the previous steps
 func (m *Main) Server(app rpc.AppServer) (*Main, error) {
+	if m.client {
+		return nil, errors.New("client can't act as a server")
+	}
+
 	m.app = app
 
 	return m, m.err
 }
 
+// Listen starts the server and listen on the request topic
+// interruptor stops it, if it's triggered
 func (m *Main) Listen() error {
+	if m.client {
+		return errors.New("client can't act as a server")
+	}
+
 	var err error
-	// @todo dont listen if it is Client
 
 	p, err := producer.New(m.p)
 
 	// rpc server: accepts request, calls application, sends response
 	ctx, cancel := context.WithCancel(context.Background())
-	m.rpcServer = rpc.NewServer(ctx, m.app, p)
+	rpcServer := rpc.NewServer(ctx, m.app, p)
 
-	c, err := consumer.New(m.c, m.reqTopic, m.channel, m.rpcServer)
+	c, err := consumer.New(m.c, m.reqTopic, m.channel, rpcServer)
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -120,6 +143,7 @@ func (m *Main) Listen() error {
 	return nil
 }
 
+// SetInterruptor setup a custom interruptor
 func (m *Main) SetInterruptor(i func()) {
 	m.customInterruptor = true
 	m.interruptor = i
@@ -129,15 +153,28 @@ func (m *Main) SetInterruptor(i func()) {
 	Client related methods
 */
 
+// Client do the setup for client kind of handler
+// it waits for a response topic name as parameter
 func (m *Main) Client(rt string) (*Main, error) {
+	if m.server {
+		return nil, errors.New("server can't act as a client")
+	}
+
 	m.rspTopic = rt
 
 	return m, m.err
 }
 
+// Publish a message to the nsq and waits for the server response
+// through the response topic
+// the first parameter is the resource what it want to reach from the
+// AppServer and the second is the exact message
 func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
+	if m.server {
+		return nil, errors.New("server can't act as a client")
+	}
+
 	var err error
-	// @todo dont publish if it is Server
 
 	p, err := producer.New(m.p)
 
@@ -168,6 +205,7 @@ func (m *Main) Publish(typ string, msg []byte) ([]byte, error) {
 	return rspBody, nil
 }
 
+// DefaultInterupt is the default one and waits for a Ctrl+C
 func DefaultInterupt() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
