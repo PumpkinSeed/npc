@@ -21,6 +21,8 @@ func TestAll(t *testing.T) {
 	wg.Add(1)
 	go s(t)
 
+	c(t)
+
 	wg.Wait()
 }
 
