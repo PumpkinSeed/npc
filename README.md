@@ -3,6 +3,11 @@ RPC framework for NSQ
 
 [![Documentation](https://godoc.org/github.com/PumpkinSeed/npc?status.svg)](https://godoc.org/github.com/PumpkinSeed/npc) 
 
+- [Usage](#usage)
+	- [Server](#server)
+	- [Client](#client)
+	- [Details](#details) (Logger, Configs, AppServer, Interrupter)
+
 ## Usage
 
 ```
@@ -13,7 +18,7 @@ go get github.com/PumpkinSeed/npc
 
 Server implements an exact rpc server which is listening on the request topic and consume the message than publish the answer to the response topic determined in the Envelope (Envelope not seen by the user of the library, it's just for the inner communication).
 
-Create a server using the `npc.New({TYPE})`, `Init({PRODUCER_CONFIG}, {CONSUMER_CONFIG}, {REQUEST_TOPIC}, {NSQ_CHANNEL}, {LOGGER})` and the `Server({rpc.AppServer})`. The type in this case will be `npc.Server`. After start the listener with the `Listen()` method. More information about the [details](Details) section.
+Create a server using the `npc.New({TYPE})`, `Init({PRODUCER_CONFIG}, {CONSUMER_CONFIG}, {REQUEST_TOPIC}, {NSQ_CHANNEL}, {LOGGER})` and the `Server({rpc.AppServer})`. The type in this case will be `npc.Server`. After start the listener with the `Listen()` method. More information about the [details](#details) section.
 
 ```
 package main
@@ -86,7 +91,7 @@ func (a *app) Serve(ctx context.Context, method string, reqBuf []byte) ([]byte, 
 
 Client implements a publisher which waiting for the response until it's not arriving or the timeout not reached. 
 
-Create a client using the `npc.New({TYPE})`, `Init({PRODUCER_CONFIG}, {CONSUMER_CONFIG}, {REQUEST_TOPIC}, {NSQ_CHANNEL}, {LOGGER})` and the `Client({RESPONSE_TOPIC})`. The type in this case will be `npc.Client`. After call the `Publish({RESOURCE}, {DATA})` method. More information about the [details](Details) section.
+Create a client using the `npc.New({TYPE})`, `Init({PRODUCER_CONFIG}, {CONSUMER_CONFIG}, {REQUEST_TOPIC}, {NSQ_CHANNEL}, {LOGGER})` and the `Client({RESPONSE_TOPIC})`. The type in this case will be `npc.Client`. After call the `Publish({RESOURCE}, {DATA})` method. More information about the [details](#details) section.
 
 ```
 package main
@@ -153,7 +158,7 @@ func action(wg *sync.WaitGroup) {
 }
 ```
 
-#### Details
+### Details
 
 **Logger**
 
